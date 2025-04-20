@@ -7,11 +7,13 @@ import io
 
 # === CONFIG ===
 base_path = os.path.expanduser("~/Documents/2025_CAPSTONE")
-output_path = os.path.join(base_path, "output")
+output_path = "output"
 hotel_name = "Neo Puri Indah"
 
 # === LOAD FORECAST + ACCURACY ===
 def load_latest(prefix):
+    st.write("📁 Streamlit sees these files in /output:", os.listdir(output_path))
+st.write("🔍 Looking for prefix:", prefix)
     files = [f for f in os.listdir(output_path) if f.startswith(prefix) and f.endswith(".xlsx")]
     if not files:
         return None
@@ -26,7 +28,7 @@ def load_latest(prefix):
         df['stay_date'] = pd.to_datetime(df['stay_date'])
 
     return df
-
+st.write("Files in /output:", os.listdir("output"))
 forecast_df = load_latest("forecast_soft_ensemble_quality")
 forecast_df['stay_date'] = pd.to_datetime(forecast_df['stay_date']).dt.date
 accuracy_df = load_latest("forecast_soft_ensemble_accuracy")
