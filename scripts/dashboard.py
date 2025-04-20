@@ -13,7 +13,7 @@ hotel_name = "Neo Puri Indah"
 # === LOAD FORECAST + ACCURACY ===
 def load_latest(prefix):
     st.write("📁 Streamlit sees these files in /output:", os.listdir(output_path))
-st.write("🔍 Looking for prefix:", prefix)
+    st.write("🔍 Looking for prefix:", prefix)
     files = [f for f in os.listdir(output_path) if f.startswith(prefix) and f.endswith(".xlsx")]
     if not files:
         return None
@@ -28,6 +28,7 @@ st.write("🔍 Looking for prefix:", prefix)
         df['stay_date'] = pd.to_datetime(df['stay_date'])
 
     return df
+
 st.write("Files in /output:", os.listdir("output"))
 forecast_df = load_latest("forecast_soft_ensemble_quality")
 forecast_df['stay_date'] = pd.to_datetime(forecast_df['stay_date']).dt.date
@@ -83,7 +84,6 @@ date_range = st.slider(
     label_visibility="visible"
 )
 
-# forecast_df['stay_date'] is already a datetime.date, so no .dt.date needed
 filtered_future = forecast_df[
     (forecast_df['stay_date'] >= date_range[0]) &
     (forecast_df['stay_date'] <= date_range[1])
@@ -118,7 +118,6 @@ if os.path.exists(pickup_log_path):
     dow_pickup_summary = dow_pickup_summary.rename(columns={'count': 'sample_size', 'mean': 'avg_pickup_rooms'})
     dow_pickup_summary['avg_pickup_rooms'] = dow_pickup_summary['avg_pickup_rooms'].round(2)
 
-    # Set weekday order explicitly
     weekday_order = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
     dow_pickup_summary['day_of_week'] = pd.Categorical(dow_pickup_summary['day_of_week'], categories=weekday_order, ordered=True)
     dow_pickup_summary = dow_pickup_summary.sort_values('day_of_week')
@@ -156,13 +155,12 @@ if os.path.exists(los_path):
         (df_los['stay_date'].dt.date <= los_date_range[1])
     ]
 
-    # ➕ Show average LOS for filtered range
     avg_los_display = df_los_filtered['LOS'].mean().round(2)
     st.markdown(f"<div style='text-align: right; font-size: 0.9em; color: gray;'>Average LOS = {avg_los_display} nights</div>", unsafe_allow_html=True)
 
     los_chart = alt.Chart(df_los_filtered).mark_line(point=True).encode(
         x=alt.X('stay_date:T', title='Stay Date'),
-        y=alt.Y('LOS:Q', title='Avg Length of Stay (nights)'),  # dynamic axis
+        y=alt.Y('LOS:Q', title='Avg Length of Stay (nights)'),
         tooltip=['stay_date:T', 'LOS:Q']
     ).properties(width=800, height=300)
 
@@ -171,8 +169,6 @@ else:
     st.info("LOS trend file not found.")
 
 # === FORECAST ACCURACY TABLE (MAPE) ===
-
-# Load the latest forecast accuracy file with timestamp
 accuracy_files = [f for f in os.listdir(output_path) if f.startswith("forecast_soft_ensemble_accuracy_") and f.endswith(".xlsx")]
 accuracy_df = None
 
@@ -182,15 +178,11 @@ if accuracy_files:
 
 if accuracy_df is not None:
     accuracy_df['stay_date'] = pd.to_datetime(accuracy_df['stay_date'])
-
-    # Only keep rows where forecast has actually run (non-null ensemble)
     accuracy_valid = accuracy_df[accuracy_df['ensemble'].notnull()]
 
     if not accuracy_valid.empty:
         st.subheader("Forecast Accuracy (MAPE)")
         accuracy_valid['stay_date'] = accuracy_valid['stay_date'].dt.strftime('%Y-%m-%d')
-
-        # Rename columns for clarity
         display_df = accuracy_valid.rename(columns={
             'stay_date': 'Stay Date',
             'occupancy': 'Occupancy',
@@ -206,40 +198,32 @@ if accuracy_df is not None:
             use_container_width=True,
             hide_index=True
         )
+
 # === BAR LEVEL RECOMMENDATION TABLE (MERGED) ===
 st.subheader("BAR Level Recommendations – Next 7 Days")
 
-# Load latest files
 bar_file = load_latest("bar_level_predictions")
 pricing_file = load_latest("pricing_recommendation_weighted")
 
 if bar_file is not None and pricing_file is not None:
-    # Normalize column names
     bar_file.columns = [col.strip().lower().replace(" ", "_") for col in bar_file.columns]
     pricing_file.columns = [col.strip().lower().replace(" ", "_") for col in pricing_file.columns]
 
-    # Convert dates
     bar_file['stay_date'] = pd.to_datetime(bar_file['stay_date']).dt.date
     pricing_file['stay_date'] = pd.to_datetime(pricing_file['stay_date']).dt.date
 
-    # Merge
     merged = bar_file.merge(
         pricing_file[['stay_date', 'bar_rate', 'rate_decision_reason']],
         on='stay_date',
         how='left'
     )
-
-    # Add dashboard run timestamp
     merged['recommendation_timestamp'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-
-    # Filter for next 7 days
     next_7 = merged[
         (merged['stay_date'] >= date.today()) &
         (merged['stay_date'] <= date.today() + timedelta(days=6))
     ]
 
     if not next_7.empty:
-        # Ensure numeric formatting
         next_7['bar_rate'] = pd.to_numeric(next_7['bar_rate'], errors='coerce')
         next_7['ensemble_forecast'] = pd.to_numeric(next_7['ensemble_forecast'], errors='coerce')
 
@@ -272,7 +256,3 @@ footer {visibility: hidden;}
 </style>
 """
 st.markdown(hide_streamlit_style, unsafe_allow_html=True)
-
-
-
-
